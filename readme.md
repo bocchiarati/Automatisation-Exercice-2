@@ -59,3 +59,9 @@ docker compose exec php bin/console db:populate
 
 ## Exercices
 Voir le fichier [TODO.md](TODO.md)
+
+## Utilisation des ajouts demander dans le [TODO.md](TODO.md)
+
+- Lancer PHPCodeSniffer : `docker compose run --rm php composer run-script phpcs`
+- Lancer PHPStan : `docker compose run --rm php composer run-script phpstan`
+- Lancer ESLint : `docker compose run --rm node npx eslint assets/*.js`
