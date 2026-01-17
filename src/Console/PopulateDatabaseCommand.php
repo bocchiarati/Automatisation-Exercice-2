@@ -5,6 +5,7 @@ namespace App\Console;
 use App\Models\Company;
 use App\Models\Employee;
 use App\Models\Office;
+use Faker\Factory;
 use Illuminate\Support\Facades\Schema;
 use Slim\App;
 use Symfony\Component\Console\Command\Command;
@@ -40,34 +41,76 @@ class PopulateDatabaseCommand extends Command
         $db->getConnection()->statement("TRUNCATE `companies`");
         $db->getConnection()->statement("SET FOREIGN_KEY_CHECKS=1");
 
+        $faker = Factory::create("fr_FR");
+        for($company = 1; $company < 4; $company++) {
+            $company_data = $this->createRandomCompany($db, $faker);
 
-        $db->getConnection()->statement("INSERT INTO `companies` VALUES
-    (1,'Stack Exchange','0601010101','stack@exchange.com','https://stackexchange.com/','https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Verisure_information_technology_department_at_Ch%C3%A2tenay-Malabry_-_2019-01-10.jpg/1920px-Verisure_information_technology_department_at_Ch%C3%A2tenay-Malabry_-_2019-01-10.jpg', now(), now(), null),
-    (2,'Google','0602020202','contact@google.com','https://www.google.com','https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Google_office_%284135991953%29.jpg/800px-Google_office_%284135991953%29.jpg?20190722090506',now(), now(), null)
-        ");
+            for($officies = 1; $officies < 4; $officies++) {
+                $officies_id = $this->createRandomOffices($db, $faker, $company_data);
 
-        $db->getConnection()->statement("INSERT INTO `offices` VALUES
-    (1,'Bureau de Nancy','1 rue Stanistlas','Nancy','54000','France','nancy@stackexchange.com',NULL,1, now(), now()),
-    (2,'Burea de Vandoeuvre','46 avenue Jeanne d\'Arc','Vandoeuvre','54500','France',NULL,NULL,1, now(), now()),
-    (3,'Siege sociale','2 rue de la primatiale','Paris','75000','France',NULL,NULL,2, now(), now()),
-    (4,'Bureau Berlinois','192 avenue central','Berlin','12277','Allemagne',NULL,NULL,2, now(), now())
-        ");
-
-        $db->getConnection()->statement("INSERT INTO `employees` VALUES
-     (1,'Camille','La Chenille',1,'camille.la@chenille.com',NULL,'Ingénieur', now(), now()),
-     (2,'Albert','Mudhat',2,'albert.mudhat@aqume.net',NULL,'Superviseur', now(), now()),
-     (3,'Sylvie','Tesse',3,'sylive.tesse@factice.local',NULL,'PDG', now(), now()),
-     (4,'John','Doe',4,'john.doe@generique.org',NULL,'Testeur', now(), now()),
-     (5,'Jean','Bon',1,'jean@test.com',NULL,'Developpeur', now(), now()),
-     (6,'Anais','Dufour',2,'anais@aqume.net',NULL,'DBA', now(), now()),
-     (7,'Sylvain','Poirson',3,'sylvain@factice.local',NULL,'Administrateur réseau', now(), now()),
-     (8,'Telma','Thiriet',4,'telma@generique.org',NULL,'Juriste', now(), now())
-        ");
+                for($employees = 1; $employees < 8; $employees++) {
+                    $this->createRandomEmployees($db, $faker, [
+                        "id" => $officies_id,
+                        "company_slug" => $company_data["slug"],
+                    ]);
+                }
+            }
+        }
 
         $db->getConnection()->statement("update companies set head_office_id = 1 where id = 1;");
         $db->getConnection()->statement("update companies set head_office_id = 3 where id = 2;");
 
         $output->writeln('Database created successfully!');
         return 0;
+    }
+
+    private function createRandomCompany($db, $faker){
+        $id = $faker->unique()->numberBetween(1, 100);
+        $name = $faker->company;
+        $phone = $faker->phoneNumber;
+        $email = $faker->freeEmailDomain;
+        $email = strtolower(str_replace(' ', '.', $name)) . '@' . $email;
+        $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $name)));
+        $link  = "https://www." . $slug . ".com";
+        $image_link  = $faker->imageUrl;
+
+
+
+        $db->getConnection()->statement("INSERT INTO `companies` VALUES
+            ($id,'$name', '$phone', '$email' ,'$link','$image_link', now(), now(), null)
+        ");
+
+        return ["slug" => $slug, "id" => $id];
+    }
+
+    private function createRandomOffices($db, $faker, $company_data) {
+        $id = $faker->unique->numberBetween(1, 100);
+        $city = $faker->city;
+        $name = "Bureau de ". $city;
+        $address = $faker->streetAddress;
+        $postal_code = $faker->postcode;
+        $country  = $faker->country;
+        $email = $city . '@' . $company_data["slug"] . ".com";
+        $company_id = $company_data["id"];
+
+        $db->getConnection()->statement("INSERT INTO `offices` VALUES
+            ($id,'$name','$address','$city','$postal_code','$country','$email',NULL,$company_id, now(), now())");
+
+        $db->getConnection()->statement("update companies set head_office_id = $id where id = $company_id;");
+
+        return $id;
+    }
+
+    private function createRandomEmployees($db, $faker, $office_data)
+    {
+        $id = $faker->unique->numberBetween(1, 100);
+        $first_name = $faker->firstName;
+        $last_name = $faker->lastName;
+        $office_id = $office_data["id"];
+        $email = $first_name . '@' . $office_data["company_slug"] . ".com";
+        $poste = str_replace("'", "''", $faker->jobTitle);
+
+        $db->getConnection()->statement("INSERT INTO `employees` VALUES
+            ($id,'$first_name','$last_name',$office_id,'$email',NULL,'$poste', now(), now())");
     }
 }
